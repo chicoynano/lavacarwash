@@ -1,46 +1,32 @@
-/**
- * Represents the data required to create a Stripe Checkout session.
- */
-export interface StripeCheckoutData {
-  /**
-   * The line items for the checkout session, including price and quantity.
-   */
-  lineItems: {
-    price: string;
-    quantity: number;
-  }[];
-  /**
-   * The URL to redirect to after successful payment.
-   */
-  successUrl: string;
-  /**
-   * The URL to redirect to if the payment is cancelled.
-   */
-  cancelUrl: string;
+import Stripe from "stripe";
+import { NextResponse } from "next/server";
+import { db } from "@/lib/firebase";
+import { doc, updateDoc } from "firebase/firestore";
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+  apiVersion: "2025-04-30.basil",
+});
+
+
+export async function createCheckoutSession(bookingId: string, amount: number) {
+  const session = await stripe.checkout.sessions.create({
+    payment_method_types: ["card"],
+    line_items: [{
+      price_data: {
+        currency: "eur",
+        product_data: {
+          name: "Reserva LavaCarWash",
+        },
+        unit_amount: amount * 100,
+      },
+      quantity: 1,
+    }],
+    mode: "payment",
+    success_url: `${process.env.NEXT_PUBLIC_STRIPE_SUCCESS_URL}?bookingId=${bookingId}`,
+    cancel_url: process.env.NEXT_PUBLIC_STRIPE_CANCEL_URL,
+  });
+
+  return session.url;
 }
 
-/**
- * Represents the result of creating a Stripe Checkout session.
- */
-export interface StripeCheckoutResult {
-  /**
-   * The URL to redirect the user to for completing the payment.
-   */
-  url: string;
-}
 
-/**
- * Asynchronously creates a Stripe Checkout session.
- *
- * @param checkoutData The data required to create the checkout session.
- * @returns A promise that resolves to a StripeCheckoutResult object.
- */
-export async function createStripeCheckoutSession(
-  checkoutData: StripeCheckoutData
-): Promise<StripeCheckoutResult> {
-  // TODO: Implement this by calling the Stripe API.
-  console.log('Creating Stripe Checkout session:', checkoutData);
-  return {
-    url: 'https://checkout.stripe.com/fake',
-  };
-}

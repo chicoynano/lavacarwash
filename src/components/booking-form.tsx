@@ -51,8 +51,8 @@ import Image from 'next/image';
 
 import { cn } from "@/lib/utils";
 import type { Service } from "@/types";
-import { getServices } from "@/app/lib/get-services"; 
-import { saveBooking, type BookingFormInput } from "@/app/actions"; 
+import { getServices } from "@/app/lib/get-services";
+import { saveBooking, type BookingFormInput } from "@/app/actions";
 import { useToast } from "@/hooks/use-toast";
 
 
@@ -63,7 +63,7 @@ const bookingSchemaClient = z.object({
   phone: z.string().min(9, { message: "Por favor, introduce un número de teléfono válido (mínimo 9 dígitos)." }), // Adjusted min length for Spanish phones
   address: z.string().min(5, { message: "Por favor, introduce una dirección válida." }),
   serviceId: z.string().min(1, { message: "Por favor, selecciona un servicio." }),
-  date: z.date({ required_error: "Por favor, selecciona una fecha."}),
+  date: z.date({ required_error: "Por favor, selecciona una fecha." }),
   time: z.string().min(1, { message: "Por favor, selecciona un horario." }),
   comments: z.string().optional(),
   payNow: z.boolean().optional(),
@@ -73,8 +73,8 @@ const bookingSchemaClient = z.object({
 // Example time slots - these might also need translation depending on format preference
 const timeSlots = [
   "09:00", "10:00", "11:00", "12:00",
-  "13:00",  "14:00", "15:00",  "16:00",  "17:00", "18:00", "19:00", "20:00"
-]; 
+  "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00"
+];
 
 export function BookingForm() {
   const [services, setServices] = useState<Service[]>([]);
@@ -106,10 +106,10 @@ export function BookingForm() {
       } catch (error) {
         console.error("Failed to load services:", error);
         toast({
-            title: "Error al Cargar Servicios",
-            description: "No se pudieron cargar los servicios. Por favor, inténtalo de nuevo más tarde.",
-            variant: "destructive",
-          });
+          title: "Error al Cargar Servicios",
+          description: "No se pudieron cargar los servicios. Por favor, inténtalo de nuevo más tarde.",
+          variant: "destructive",
+        });
       } finally {
         setIsLoadingServices(false);
       }
@@ -119,7 +119,31 @@ export function BookingForm() {
 
   function onSubmit(data: BookingFormInput) {
     startTransition(async () => {
+      console.log("Form data being sent:", data); // Log form data
       const result = await saveBooking(data);
+      if (data.payNow && result.bookingId) {
+        const stripeResponse = await fetch("/api/create-checkout-session", {
+
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            bookingId: result.bookingId,
+          }),
+        });
+
+        const { url } = await stripeResponse.json();
+
+        if (url) {
+          window.location.href = url;
+          return; // Detenemos ejecución, Stripe redirige
+        } else {
+          toast({
+            title: "Error",
+            description: "No se pudo iniciar el pago.",
+            variant: "destructive",
+          });
+        }
+      }
 
       if (result.success) {
         toast({
@@ -135,15 +159,15 @@ export function BookingForm() {
           description: result.message || "No se pudo guardar la reserva. Por favor, comprueba tus datos e inténtalo de nuevo.",
           variant: "destructive",
         });
-         if (result.errors) {
-           result.errors.forEach((err) => {
+        if (result.errors) {
+          result.errors.forEach((err) => {
             form.setError(err.path[0] as keyof BookingFormInput, {
               type: "server",
               message: err.message,
             });
-           });
-           console.error("Validation Errors:", result.errors);
-         }
+          });
+          console.error("Validation Errors:", result.errors);
+        }
       }
     });
   }
@@ -151,207 +175,207 @@ export function BookingForm() {
   return (
     <Card className="w-full max-w-2xl mx-auto shadow-2xl border-border/40 rounded-xl bg-card overflow-hidden">
       <CardHeader className="pb-4 bg-muted/30 border-b border-border/40 p-6">
-         <div className="flex items-center justify-center mb-2">
-         <Link href="./">
-            <Image title="Inicio" src="/favicon.ico" alt="LavaCarWash Logo" width={50} height={50} className="h-12 w-auto object-contain rounded-md mr-3" data-ai-hint="car wash logo"/></Link>
-            <CardTitle className="text-3xl font-bold text-center text-primary tracking-tight">
+        <div className="flex items-center justify-center mb-2">
+          <Link href="./">
+            <Image title="Inicio" src="/favicon.ico" alt="LavaCarWash Logo" width={50} height={50} className="h-12 w-auto object-contain rounded-md mr-3" data-ai-hint="car wash logo" /></Link>
+          <CardTitle className="text-3xl font-bold text-center text-primary tracking-tight">
             Reserva tu lavado de coche
-            </CardTitle>
+          </CardTitle>
         </div>
         <CardDescription className="text-center text-muted-foreground text-sm">
-        Elige el servicio, la fecha y dinos cómo contactarte.        </CardDescription>
+          Elige el servicio, la fecha y dinos cómo contactarte.        </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8">
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Name */}
-                <FormField
+              {/* Name */}
+              <FormField
                 control={form.control}
                 name="name"
                 render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
                     <FormLabel className="text-sm font-medium text-foreground">Nombre Completo</FormLabel>
                     <FormControl>
-                        <div className="relative">
+                      <div className="relative">
                         <UsersIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input className="pl-10 py-2.5 text-base md:text-sm" placeholder="Ej: Juan Pérez" {...field} />
-                        </div>
+                      </div>
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
 
-                {/* Email */}
-                <FormField
+              {/* Email */}
+              <FormField
                 control={form.control}
                 name="email"
                 render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
                     <FormLabel className="text-sm font-medium text-foreground">Correo Electrónico</FormLabel>
                     <FormControl>
-                        <div className="relative">
+                      <div className="relative">
                         <MailIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input className="pl-10 py-2.5 text-base md:text-sm" type="email" placeholder="tuemail@ejemplo.com" {...field} />
-                        </div>
+                      </div>
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
 
-                {/* Phone */}
-                <FormField
+              {/* Phone */}
+              <FormField
                 control={form.control}
                 name="phone"
                 render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
                     <FormLabel className="text-sm font-medium text-foreground">Número de Teléfono</FormLabel>
                     <FormControl>
-                        <div className="relative">
+                      <div className="relative">
                         <PhoneIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input className="pl-10 py-2.5 text-base md:text-sm" type="tel" placeholder="Ej: +34 600 000 000" {...field} />
-                        </div>
+                      </div>
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
 
-                {/* Address */}
-                <FormField
+              {/* Address */}
+              <FormField
                 control={form.control}
                 name="address"
                 render={({ field }) => (
-                    <FormItem>
+                  <FormItem>
                     <FormLabel className="text-sm font-medium text-foreground">Dirección del Servicio</FormLabel>
                     <FormControl>
-                        <div className="relative">
+                      <div className="relative">
                         <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input className="pl-10 py-2.5 text-base md:text-sm" placeholder="Calle, Número, Ciudad" {...field} />
-                        </div>
+                      </div>
                     </FormControl>
                     <FormDescription className="text-xs text-muted-foreground mt-1">
-                        ¿Dónde debemos realizar el lavado?
+                      ¿Dónde debemos realizar el lavado?
                     </FormDescription>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
-                {/* Service */}
-                <FormField
+              {/* Service */}
+              <FormField
                 control={form.control}
                 name="serviceId"
                 render={({ field }) => (
-                    <FormItem className="md:col-span-1">
+                  <FormItem className="md:col-span-1">
                     <FormLabel className="text-sm font-medium text-foreground">Tipo de Servicio</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingServices}>
-                        <FormControl>
+                      <FormControl>
                         <SelectTrigger className="py-2.5 text-base md:text-sm focus:ring-primary focus:border-primary">
-                            <div className="flex items-center">
+                          <div className="flex items-center">
                             <FileTextIcon className="mr-2 h-5 w-5 text-muted-foreground" />
                             <SelectValue placeholder={isLoadingServices ? "Cargando..." : "Selecciona un servicio"} />
-                            </div>
+                          </div>
                         </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
+                      </FormControl>
+                      <SelectContent>
                         {!isLoadingServices && services.length > 0 ? (
-                            services.map((service) => (
+                          services.map((service) => (
                             <SelectItem key={service.id} value={service.id} className="text-base md:text-sm">
-                                {service.name} - {service.price.toFixed(2)} €
+                              {service.name} - {service.price.toFixed(2)} €
                             </SelectItem>
-                            ))
+                          ))
                         ) : (
-                            <SelectItem value="loading" disabled className="text-base md:text-sm">
+                          <SelectItem value="loading" disabled className="text-base md:text-sm">
                             {isLoadingServices ? "Cargando servicios..." : "No hay servicios disponibles"}
-                            </SelectItem>
+                          </SelectItem>
                         )}
-                        </SelectContent>
+                      </SelectContent>
                     </Select>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
 
-                {/* Date */}
-            <FormField
+              {/* Date */}
+              <FormField
                 control={form.control}
                 name="date"
                 render={({ field }) => (
-                    <FormItem className="flex flex-col md:col-span-1">
+                  <FormItem className="flex flex-col md:col-span-1">
                     <FormLabel className="text-sm font-medium text-foreground">Fecha</FormLabel>
                     <Popover>
-                        <PopoverTrigger asChild>
+                      <PopoverTrigger asChild>
                         <FormControl>
-                            <Button
+                          <Button
                             variant={"outline"}
                             className={cn(
-                                "w-full justify-start text-left font-normal py-2.5 text-base md:text-sm hover:bg-muted/50 focus:ring-primary focus:border-primary",
-                                !field.value && "text-muted-foreground"
+                              "w-full justify-start text-left font-normal py-2.5 text-base md:text-sm hover:bg-muted/50 focus:ring-primary focus:border-primary",
+                              !field.value && "text-muted-foreground"
                             )}
-                            >
+                          >
                             <CalendarIcon className="mr-2 h-5 w-5 opacity-70" />
                             {field.value ? (
-                                format(field.value, "PPP", { locale: es })
+                              format(field.value, "PPP", { locale: es })
                             ) : (
-                                <span>Selecciona una fecha</span>
+                              <span>Selecciona una fecha</span>
                             )}
-                            </Button>
+                          </Button>
                         </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
                         <Calendar
-                            mode="single"
-                            selected={field.value}
-                            onSelect={field.onChange}
-                            disabled={(date) =>
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) =>
                             date < new Date(new Date().setHours(0, 0, 0, 0)) || date > new Date(new Date().setDate(new Date().getDate() + 60)) // Example: allow booking up to 60 days in advance
-                            }
-                            initialFocus
-                            locale={es} 
-                          />
-                        </PopoverContent>
+                          }
+                          initialFocus
+                          locale={es}
+                        />
+                      </PopoverContent>
                     </Popover>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
 
-                {/* Time */}
-                <FormField
+              {/* Time */}
+              <FormField
                 control={form.control}
                 name="time"
                 render={({ field }) => (
-                    <FormItem className="md:col-span-1">
+                  <FormItem className="md:col-span-1">
                     <FormLabel className="text-sm font-medium text-foreground">Horario</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <FormControl>
+                      <FormControl>
                         <SelectTrigger className="py-2.5 text-base md:text-sm focus:ring-primary focus:border-primary">
-                           <div className="flex items-center">
+                          <div className="flex items-center">
                             <ClockIcon className="mr-2 h-5 w-5 text-muted-foreground" />
                             <SelectValue placeholder="Selecciona un horario" />
-                            </div>
+                          </div>
                         </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
+                      </FormControl>
+                      <SelectContent>
                         {timeSlots.map((slot) => (
-                            <SelectItem key={slot} value={slot} className="text-base md:text-sm">
+                          <SelectItem key={slot} value={slot} className="text-base md:text-sm">
                             {slot}
-                            </SelectItem>
+                          </SelectItem>
                         ))}
-                        </SelectContent>
+                      </SelectContent>
                     </Select>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-                />
+              />
             </div>
-            
+
 
             {/* Comments */}
             <FormField
@@ -362,37 +386,60 @@ export function BookingForm() {
                   <FormLabel className="text-sm font-medium text-foreground">Comentarios Adicionales (Opcional)</FormLabel>
                   <FormControl>
                     <div className="relative">
-                    <MessageSquareIcon className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
-                    <Textarea
-                      placeholder="¿Alguna instrucción especial para el servicio? (ej., enfocar en llantas, tipo de vehículo, etc.)"
-                      className="resize-none pl-10 py-2.5 text-base md:text-sm min-h-[100px]"
-                      {...field}
-                    />
+                      <MessageSquareIcon className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
+                      <Textarea
+                        placeholder="¿Alguna instrucción especial para el servicio? (ej., enfocar en llantas, tipo de vehículo, etc.)"
+                        className="resize-none pl-10 py-2.5 text-base md:text-sm min-h-[100px]"
+                        {...field}
+                      />
                     </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
+            {/* Pagar ahora */}
+            <FormField
+              control={form.control}
+              name="payNow"
+              render={({ field }) => (
+                <FormItem className="flex items-center space-x-3">
+                  <FormControl>
+                    <input
+                      type="checkbox"
+                      checked={field.value}
+                      onChange={field.onChange}
+                      className="h-4 w-4 text-primary border-gray-300 rounded"
+                    />
+                  </FormControl>
+                  <FormLabel className="text-sm font-medium text-foreground">
+                    Pagar ahora
+                  </FormLabel>
+                  <FormDescription className="text-xs text-muted-foreground">
+                    Serás redirigido a la pasarela de pago.
+                  </FormDescription>
+                </FormItem>
+              )}
+            />
 
-             {/* Submit Button */}
-             <Button 
-                type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 text-base md:text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 active:scale-[0.98]" 
-                disabled={isPending || isLoadingServices}
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 text-base md:text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 active:scale-[0.98]"
+              disabled={isPending || isLoadingServices}
             >
               {isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Enviando Reserva...
-                  </>
-                ) : (
-                  <>
-                    <SparklesIcon className="mr-2 h-5 w-5" /> 
-                    Reservar Mi Lavado Ahora
-                    <CarIcon className="ml-2 h-5 w-5" />
-                  </>
-                )}
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Enviando Reserva...
+                </>
+              ) : (
+                <>
+                  <SparklesIcon className="mr-2 h-5 w-5" />
+                  Reservar Mi Lavado Ahora
+                  <CarIcon className="ml-2 h-5 w-5" />
+                </>
+              )}
             </Button>
 
           </form>
@@ -401,4 +448,3 @@ export function BookingForm() {
     </Card>
   );
 }
-

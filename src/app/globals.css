@@ -4,6 +4,11 @@
 
 body {
   font-family: Arial, Helvetica, sans-serif;
+  background-image: url('/fondobody.jpeg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
 }
 
 @layer base {
@@ -93,4 +98,31 @@ body {
 .border-input {
   border-color:
       hsl(227.8, 89.7%, 50.4%);
+}
+.bg-muted\/30 {
+  background-color: hsl(193, 75.5%, 90.4%);
+}
+.text-primary-foreground {
+  color: hsl(0deg 0% 99.49%);
+}
+
+.text-2xl {
+  color: hsl(0deg 0% 99.49%);
+}
+
+/* Estilos para las imágenes con borde */
+.image-with-border {
+  border: 4px solid #008080; /* Borde color Teal */
+  padding: 5px; /* Espaciado interno entre el borde y la imagen */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Sombra suave */
+}
+
+/* Estilos para el texto con background y borde */
+.text-with-background {
+  background-color: #F0F0F0; /* Background color Light gray */
+  color: #000000; /* Color de texto oscuro para que se vea sobre el fondo claro */
+  border: 2px solid #FFD700; /* Borde color Gold */
+  padding: 8px 12px; /* Espaciado interno */
+  border-radius: 5px; /* Bordes redondeados */
+  margin-top: 5px; /* Espacio entre la imagen y el texto */
 }

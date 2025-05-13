@@ -1,0 +1,83 @@
+
+npm install node-fetch @types/node-fetch
+
+
+Ruta del proyecto 
+
+cd ~/Desktop/studio
+
+cd ~/Downloads/studio
+
+
+
+Iniciar Servidor 
+
+npm run dev
+
+
+Salir terminar proceso 
+
+Ctrl + C
+
+Intalar servidor email
+npm install @emailjs/browser
+
+
+npm install resend
+
+
+Acceso 
+
+http://localhost:9002
+
+
+Acceso admin 
+
+http://localhost:9002/panel
+
+-------
+
+https://dashboard.emailjs.com/
+
+API keys
+Public Key
+128GbJelBfWA-xa9Y
+
+
+Private Key
+DqbOu_vZPwrdZisaym8-j
+
+Service ID
+service_r73cgal
+
+Name
+template_cliente
+Template ID
+template_0f6ylcp
+
+
+Name
+template_admin
+Template ID
+template_lsv899c
+
+------
+STRIPE
+npm install stripe
+
+
+npm install --save-dev @types/stripe
+
+
+
+Estas van en .env.local  de prueba
+
+STRIPE_SECRET_KEY=sk_test_placeholder
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_placeholder
+
+
+
+
+
+
+
