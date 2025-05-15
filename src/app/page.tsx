@@ -10,14 +10,22 @@ export default function Home() {
         {/* Grupo 1 de imágenes y texto */}
         {/* Centrar en móvil, margen inferior para separar grupos */}
         <div className="flex flex-col items-center mb-8">
+<<<<<<< HEAD
           <img src="/lavado.png" alt="Lavado Profesional" className="w-48 h-48 object-cover rounded-lg shadow-lg mb-2 image-with-border" /> {/* Añadimos clase image-with-border */}
+=======
+          <img src="/lavado.png" alt="Lavado Profesional" className="w-48 h-48 object-cover rounded-lg shadow-lg mb-2 image-with-border"/> {/* Añadimos clase image-with-border */}
+>>>>>>> 1138f3c75e951300249d68d09d6f2c9079e458ad
           <p className="text-center text-primary-foreground mb-8 text-with-background">Lavado Profesional</p> {/* Añadimos clase text-with-background */}
         </div>
 
         {/* Grupo 2 de imágenes y texto */}
         {/* Centrar en móvil */}
         <div className="flex flex-col items-center">
+<<<<<<< HEAD
           <img src="/interior.png" alt="Detallado de Interiores" className="w-48 h-48 object-cover rounded-lg shadow-lg mb-2 image-with-border" /> {/* Añadimos clase image-with-border */}
+=======
+          <img src="/interior.png" alt="Detallado de Interiores" className="w-48 h-48 object-cover rounded-lg shadow-lg mb-2 image-with-border"/> {/* Añadimos clase image-with-border */}
+>>>>>>> 1138f3c75e951300249d68d09d6f2c9079e458ad
           <p className="text-center text-primary-foreground mb-8 text-with-background">Detallado de Interiores</p> {/* Añadimos clase text-with-background */}
         </div>
       </div>
@@ -31,6 +39,7 @@ export default function Home() {
       {/* Contenedor de las otras dos imágenes y textos (Columna Derecha en lg) */}
       {/* Añadimos items-center para centrar en móviles y lg:ml-8 para espaciado en lg */}
       <div className="flex flex-col items-center lg:ml-8">
+<<<<<<< HEAD
         {/* Grupo 3 de imágenes y texto */}
         {/* Centrar en móvil, margen inferior para separar grupos */}
         <div className="flex flex-col items-center mb-8">
@@ -44,6 +53,21 @@ export default function Home() {
           <img src="/pulido.png" alt="Pulido y Restauración" className="w-48 h-48 object-cover rounded-lg shadow-lg mb-2 image-with-border" /> {/* Añadimos clase image-with-border */}
           <p className="text-center text-primary-foreground mb-8 text-with-background">Pulido y Restauración</p> {/* Añadimos clase text-with-background */}
         </div>
+=======
+         {/* Grupo 3 de imágenes y texto */}
+         {/* Centrar en móvil, margen inferior para separar grupos */}
+         <div className="flex flex-col items-center mb-8">
+            <img src="/encerado.png" alt="Protección con Encerado" className="w-48 h-48 object-cover rounded-lg shadow-lg mb-2 image-with-border"/> {/* Añadimos clase image-with-border */}
+            <p className="text-center text-primary-foreground mb-8 text-with-background">Protección con Encerado</p> {/* Añadimos clase text-with-background */}
+         </div>
+
+         {/* Grupo 4 de imágenes y texto */}
+         {/* Centrar en móvil */}
+         <div className="flex flex-col items-center">
+            <img src="/pulido.png" alt="Pulido y Restauración" className="w-48 h-48 object-cover rounded-lg shadow-lg mb-2 image-with-border"/> {/* Añadimos clase image-with-border */}
+            <p className="text-center text-primary-foreground mb-8 text-with-background">Pulido y Restauración</p> {/* Añadimos clase text-with-background */}
+         </div>
+>>>>>>> 1138f3c75e951300249d68d09d6f2c9079e458ad
       </div>
     </main>
   );

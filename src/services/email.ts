@@ -91,4 +91,6 @@ export async function sendEmail(data: EmailData) {
     console.error("Failed to send email via EmailJS:", error);
     return { success: false, error: error.message || "An unknown error occurred during email sending." };
   }
+
 }
+
