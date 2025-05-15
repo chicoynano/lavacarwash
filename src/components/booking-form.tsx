@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as z from "zod";
@@ -51,16 +52,16 @@ import Image from 'next/image';
 
 import { cn } from "@/lib/utils";
 import type { Service } from "@/types";
-import { getServices } from "@/app/lib/get-services"; 
-import { saveBooking, type BookingFormInput } from "@/app/actions"; 
-import { useToast } from "@/hooks/use-toast";
+import { getServices } from "@/app/lib/get-services"; // Ensure this path is correct
+import { saveBooking, type BookingFormInput } from "@/app/actions";
+import { useToast } from "@/hooks/use-toast"; // Import useToast
 
-
+import { Checkbox } from "@/components/ui/checkbox"; // Import Checkbox
 // Client-side Zod schema with Spanish error messages
 const bookingSchemaClient = z.object({
   name: z.string().min(2, { message: "El nombre debe tener al menos 2 caracteres." }),
   email: z.string().email({ message: "Por favor, introduce una dirección de correo electrónico válida." }),
-  phone: z.string().min(9, { message: "Por favor, introduce un número de teléfono válido (mínimo 9 dígitos)." }), // Adjusted min length for Spanish phones
+  phone: z.string().min(9, { message: "Por favor, introduce un número de teléfono válido (mínimo 9 dígitos)." }),
   address: z.string().min(5, { message: "Por favor, introduce una dirección válida." }),
   serviceId: z.string().min(1, { message: "Por favor, selecciona un servicio." }),
   date: z.date({ required_error: "Por favor, selecciona una fecha."}),
@@ -74,13 +75,14 @@ const bookingSchemaClient = z.object({
 const timeSlots = [
   "09:00", "10:00", "11:00", "12:00",
   "13:00",  "14:00", "15:00",  "16:00",  "17:00", "18:00", "19:00", "20:00"
-]; 
+];
 
 export function BookingForm() {
   const [services, setServices] = useState<Service[]>([]);
   const [isLoadingServices, setIsLoadingServices] = useState(true);
   const [isPending, startTransition] = useTransition();
   const { toast } = useToast();
+  const [payNow, setPayNow] = useState(false); // Estado para el checkbox "Pagar ahora"
 
   const form = useForm<BookingFormInput>({
     resolver: zodResolver(bookingSchemaClient),
@@ -95,6 +97,7 @@ export function BookingForm() {
       comments: "",
       payNow: false,
     },
+    // defaultValues.payNow will be overridden by local state if needed for controlled component
   });
 
   useEffect(() => {
@@ -119,15 +122,23 @@ export function BookingForm() {
 
   function onSubmit(data: BookingFormInput) {
     startTransition(async () => {
-      const result = await saveBooking(data);
+      console.log("Form data being sent:", data); // Log form data
 
+      // Merge form data with the local payNow state
+      const dataWithPayNow = { ...data, payNow: payNow };
+
+      const result = await saveBooking(dataWithPayNow);
+      
       if (result.success) {
         toast({
           title: "¡Reserva Enviada!",
           description: result.message || "Hemos recibido tu solicitud de reserva. Revisa tu correo para la confirmación.",
           variant: "default", // Greenish for success
           className: "bg-green-100 border-green-400 text-green-700 dark:bg-green-900 dark:border-green-700 dark:text-green-300",
+
         });
+        // Handle Stripe redirection if needed
+        if (result.stripeCheckoutUrl) { window.location.href = result.stripeCheckoutUrl; }
         form.reset();
       } else {
         toast({
@@ -137,15 +148,19 @@ export function BookingForm() {
         });
          if (result.errors) {
            result.errors.forEach((err) => {
-            form.setError(err.path[0] as keyof BookingFormInput, {
-              type: "server",
-              message: err.message,
-            });
+            // Ensure err.path is not empty and err.path[0] is a valid key
+            if (err.path && err.path.length > 0) {
+              form.setError(err.path[0] as keyof BookingFormInput, { // Type assertion might be needed
+                type: "server",
+                message: err.message,
+              });
+            }
            });
            console.error("Validation Errors:", result.errors);
          }
       }
     });
+  
   }
 
   return (
@@ -159,7 +174,8 @@ export function BookingForm() {
             </CardTitle>
         </div>
         <CardDescription className="text-center text-muted-foreground text-sm">
-        Elige el servicio, la fecha y dinos cómo contactarte.        </CardDescription>
+        Elige el servicio, la fecha y dinos cómo contactarte.
+        </CardDescription>
       </CardHeader>
       <CardContent className="p-6 md:p-8">
 
@@ -250,7 +266,7 @@ export function BookingForm() {
                 render={({ field }) => (
                     <FormItem className="md:col-span-1">
                     <FormLabel className="text-sm font-medium text-foreground">Tipo de Servicio</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingServices}>
+                    <Select onValueChange={field.onChange} defaultValue={field.value} disabled={isLoadingServices} >
                         <FormControl>
                         <SelectTrigger className="py-2.5 text-base md:text-sm focus:ring-primary focus:border-primary">
                             <div className="flex items-center">
@@ -288,20 +304,22 @@ export function BookingForm() {
                     <Popover>
                         <PopoverTrigger asChild>
                         <FormControl>
-                            <Button
-                            variant={"outline"}
-                            className={cn(
-                                "w-full justify-start text-left font-normal py-2.5 text-base md:text-sm hover:bg-muted/50 focus:ring-primary focus:border-primary",
-                                !field.value && "text-muted-foreground"
-                            )}
-                            >
-                            <CalendarIcon className="mr-2 h-5 w-5 opacity-70" />
-                            {field.value ? (
-                                format(field.value, "PPP", { locale: es })
-                            ) : (
-                                <span>Selecciona una fecha</span>
-                            )}
-                            </Button>
+                        <Button
+    variant={"outline"}
+    className={cn(
+      "justify-start text-left font-normal py-2.5 text-base md:text-sm hover:bg-muted/50 focus:ring-primary focus:border-primary", // Eliminado w-full
+      !field.value && "text-muted-foreground"
+  )}
+  
+>
+    <CalendarIcon className="mr-2 h-5 w-5 opacity-70" />
+    {field.value ? (
+        format(field.value, "PPP", { locale: es })
+    ) : (
+        <span>Elije fecha</span>
+    )}
+</Button>
+
                         </FormControl>
                         </PopoverTrigger>
                         <PopoverContent className="w-auto p-0" align="start">
@@ -313,7 +331,7 @@ export function BookingForm() {
                             date < new Date(new Date().setHours(0, 0, 0, 0)) || date > new Date(new Date().setDate(new Date().getDate() + 60)) // Example: allow booking up to 60 days in advance
                             }
                             initialFocus
-                            locale={es} 
+                            locale={es} // Use Spanish locale
                           />
                         </PopoverContent>
                     </Popover>
@@ -351,7 +369,7 @@ export function BookingForm() {
                 )}
                 />
             </div>
-            
+
 
             {/* Comments */}
             <FormField
@@ -375,10 +393,25 @@ export function BookingForm() {
               )}
             />
 
+            {/* Checkbox Pagar ahora */}
+            <div className="flex items-center space-x-2 mt-4">
+              <Checkbox
+                id="payNow"
+                checked={payNow}
+                onCheckedChange={(checked) => setPayNow(checked as boolean)}
+              />
+              <label
+                htmlFor="payNow"
+                className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+              >
+                Pagar ahora (Requiere confirmación de pago inmediato)
+              </label>
+            </div>
+
              {/* Submit Button */}
-             <Button 
-                type="submit" 
-                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 text-base md:text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 active:scale-[0.98]" 
+             <Button
+                type="submit"
+                className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3 text-base md:text-lg rounded-lg shadow-md hover:shadow-lg transition-all duration-300 ease-in-out transform hover:-translate-y-0.5 active:scale-[0.98]"
                 disabled={isPending || isLoadingServices}
             >
               {isPending ? (
@@ -388,7 +421,7 @@ export function BookingForm() {
                   </>
                 ) : (
                   <>
-                    <SparklesIcon className="mr-2 h-5 w-5" /> 
+                    <SparklesIcon className="mr-2 h-5 w-5" />
                     Reservar Mi Lavado Ahora
                     <CarIcon className="ml-2 h-5 w-5" />
                   </>
@@ -401,4 +434,3 @@ export function BookingForm() {
     </Card>
   );
 }
-

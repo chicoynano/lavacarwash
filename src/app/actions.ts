@@ -2,9 +2,21 @@
 
 import { z } from "zod";
 import { collection, getDocs, addDoc, Timestamp } from "firebase/firestore";
-import type { Service, Booking } from "@/types";
+import type { Booking, Service } from "@/types/index"; // Corrected import path
+
+
 import { db } from "@/lib/firebase";
 import { sendEmail, type EmailData } from "@/services/email"; // Import sendEmail and EmailData type
+import Stripe from "stripe";
+
+// Define una interfaz para el tipo de retorno de saveBooking
+interface SaveBookingResult {
+  success: boolean;
+  message: string;
+  errors?: z.ZodIssue[]; // Include potential validation errors
+  bookingId?: string; // Optionally return the booking ID
+  stripeCheckoutUrl?: string | null; // Make stripeCheckoutUrl optional and allow null
+}
 
 // Obtener lista de servicios desde Firestore
 export async function getServices(): Promise<Service[]> {
@@ -36,12 +48,7 @@ const bookingSchema = z.object({
 export type BookingFormInput = z.infer<typeof bookingSchema>;
 
 // Guardar reserva en Firestore y enviar email
-export async function saveBooking(data: BookingFormInput): Promise<{
-    success: boolean;
-    message: string;
-    errors?: z.ZodIssue[]; // Include potential validation errors
-    bookingId?: string; // Optionally return the booking ID
-}> {
+export async function saveBooking(data: BookingFormInput): Promise<SaveBookingResult> {
   const result = bookingSchema.safeParse(data);
 
   if (!result.success) {
@@ -53,8 +60,8 @@ export async function saveBooking(data: BookingFormInput): Promise<{
     };
   }
 
-  const { serviceId, payNow, date, ...rest } = result.data; // Destructure date
-
+  const { serviceId, payNow, date, ...rest } = result.data; // Destructure date and payNow
+  console.log("Valor inicial de rest.comments:", rest.comments);
   try {
     const services = await getServices();
     const selectedService = services.find((s) => s.id === serviceId);
@@ -65,12 +72,13 @@ export async function saveBooking(data: BookingFormInput): Promise<{
 
     // Format date for Firestore and email
     const formattedDateForFirestore = Timestamp.fromDate(date);
-    const formattedDateForEmail = date.toLocaleDateString('es-ES', { // Format date for email (Spanish locale)
-        year: 'numeric', month: 'long', day: 'numeric'
-      });
+    const formattedDateForEmail = date.toLocaleDateString("es-ES", {
+      // Format date for email (Spanish locale)
+      year: "numeric", month: "long", day: "numeric",
+    });
 
     // Prepare data for Firestore document
-    const reservaData: Omit<Booking, "id" | "paymentIntentId" | "createdAt" | "status" | "date"> & { // Exclude id and fields with default/generated values
+    const reservaData: Omit<Booking, "id" | "paymentIntentId" | "createdAt" | "status" | "date"> & {
       createdAt: Timestamp;
       status: Booking["status"];
       date: Timestamp; // Use Timestamp for Firestore
@@ -89,47 +97,74 @@ export async function saveBooking(data: BookingFormInput): Promise<{
       createdAt: Timestamp.now(),
     };
 
-
-    // Save booking to Firestore
+    console.log("Intentando guardar en la colección:", "reservas");
+    console.log("Datos a guardar:", reservaData);
     const docRef = await addDoc(collection(db, "reservas"), reservaData);
     console.log("Reserva guardada con ID:", docRef.id);
 
-    // Prepare data for EmailJS template based on the EmailData interface
-    const emailParams: EmailData = {
-      to_email: rest.email, // Assuming your template variable is {{to_email}}
-      from_name: "LavaCarWash", // Your business name (can be customized)
-      subject: `Confirmación de Reserva - ${selectedService.name}`, // More specific subject
-      client_name: rest.name, // Corresponds to {{client_name}}
-      service_name: selectedService.name, // Corresponds to {{service_name}}
-      booking_date: formattedDateForEmail, // Corresponds to {{booking_date}}
-      booking_time: rest.time, // Corresponds to {{booking_time}}
-      booking_address: rest.address, // Corresponds to {{booking_address}}
-      // Add any other variables needed by your specific EmailJS template
-      // e.g., booking_id: docRef.id,
-      // e.g., comments: rest.comments || 'Ninguno',
-    };
+    if (payNow === true) { // Check if payNow is explicitly true
+      // Lógica para crear la sesión de Checkout de Stripe
+      try {
+        const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+          apiVersion: '2025-04-30.basil', // Cambiado a la versión esperada
+        });
 
-
-    // Send email confirmation using the updated service
-    try {
-        await sendEmail(emailParams);
-        console.log("Email de confirmación enviado a:", rest.email);
-    } catch (emailError) {
-        console.error("Error al enviar el email de confirmación:", emailError);
-        // Return success for booking, but indicate email failed
-        return {
-            success: true, // Booking saved successfully
-            message: "¡Reserva guardada! Sin embargo, hubo un problema al enviar el correo de confirmación.",
+        const session = await stripe.checkout.sessions.create({
+          payment_method_types: ['card'],
+          line_items: [
+            {
+              price_data: {
+                currency: 'eur', // Cambia a tu moneda si es necesario
+                product_data: {
+                  name: selectedService.name,
+                  description: `Fecha: ${formattedDateForEmail}, Hora: ${rest.time}`, // Añadir fecha y hora a la descripción
+                },
+                unit_amount: Math.round(selectedService.price * 100), // Precio en céntimos
+              },
+              quantity: 1,
+            },
+          ],
+          mode: 'payment',
+          success_url: `${process.env.NEXT_PUBLIC_BASE_URL}/success?bookingId=${docRef.id}`, // URL de éxito
+          cancel_url: `${process.env.NEXT_PUBLIC_BASE_URL}/cancel?bookingId=${docRef.id}`,   // URL de cancelación
+          metadata: {
             bookingId: docRef.id,
+            clientEmail: rest.email,
+            clientName: rest.name,
+            serviceName: selectedService.name,
+            bookingDate: formattedDateForEmail, // Pass formatted date to webhook
+            bookingTime: rest.time,
+            bookingAddress: rest.address,
+            bookingPhone: rest.phone,
+            bookingComments: rest.comments || '',
+          },
+        });
+
+        // Devolver la URL de la sesión para redirigir al cliente
+        return {
+          success: true,
+          message: "Reserva guardada. Redirigiendo para completar el pago...",
+          bookingId: docRef.id,
+          stripeCheckoutUrl: session.url, // Incluir la URL de Stripe
         };
+
+      } catch (stripeError: any) {
+        console.error("Error al crear la sesión de Checkout de Stripe:", stripeError);
+        // Considerar cómo manejar este error: podrías marcar la reserva con un estado de pago fallido
+        return {
+          success: false,
+          message: `Error al iniciar el proceso de pago: ${stripeError.message || "Error desconocido"}`,
+          bookingId: docRef.id, // Aún devolvemos el ID de la reserva creada
+        };
+      }
     }
 
-
+    // If payNow is false, return the original success response
     return {
-        success: true,
-        message: "¡Reserva enviada correctamente! Revisa tu correo para la confirmación.",
-        bookingId: docRef.id,
-     };
+      success: true, // Booking saved successfully
+      message: "¡Reserva guardada! Completa el pago para confirmar. Te enviaremos un email después del pago.", // Updated message
+      bookingId: docRef.id,
+    };
   } catch (error) {
     console.error("Error al guardar reserva o enviar email:", error);
     const errorMessage = error instanceof Error ? error.message : "Error desconocido";
